@@ -1,0 +1,167 @@
+# ---------------------------------------------------------
+# Project: Olympic Medals Analysis
+# Author: Narjis Saleh Yaslam Bin Tayeb
+# Description: This R script analyzes an Olympic medals dataset 
+#              to explore top-performing countries, athletes,
+#              and gender-based performance trends.
+# Tools: R, dplyr, ggplot2, psych
+# ---------------------------------------------------------
+
+# 🧩 Load Required Libraries
+library(dplyr)
+library(psych)
+library(ggplot2)
+
+# ---------------------------------------------------------
+# 📂 Load the Dataset
+# Make sure the file 'medals.csv' is in your working directory
+# (e.g., same folder as this R script)
+# ---------------------------------------------------------
+
+medals <- read.csv("medals.csv")
+
+# View the first few rows
+head(medals)
+
+# ---------------------------------------------------------
+# 🔍 Task 1: Data Cleaning
+# ---------------------------------------------------------
+
+# Check for missing values in the dataset
+colSums(is.na(medals))
+
+# Find rows with missing medal_code
+na_medal_code <- medals %>%
+  filter(is.na(medal_code))
+
+# Replace missing medal_code with '3' for Bronze
+medals <- medals %>%
+  mutate(medal_code = ifelse(is.na(medal_code), 3, medal_code))
+
+# Convert medal_date to Date type
+medals$medal_date <- as.Date(medals$medal_date, format = "%Y-%m-%d")
+
+# Check structure of dataset
+str(medals)
+
+# ---------------------------------------------------------
+# 📊 Task 2: Descriptive Statistics
+# ---------------------------------------------------------
+
+# Generate a detailed summary
+summary(medals)
+
+# Total number of records
+total_records <- nrow(medals)
+cat("Total Records:", total_records, "\n")
+
+# ---------------------------------------------------------
+# 🏅 Task 3: Medal Insights by Country and Athlete
+# ---------------------------------------------------------
+
+# Country-wise medal counts
+country_medal_counts <- medals %>%
+  group_by(country, medal_type) %>%
+  summarise(medal_count = n(), .groups = 'drop')
+
+# Find countries with highest count per medal type
+highest_medals <- country_medal_counts %>%
+  group_by(medal_type) %>%
+  slice(which.max(medal_count))
+print(highest_medals)
+
+# Top 3 medallists
+top_medallists <- medals %>%
+  group_by(name) %>%
+  summarise(medal_count = n(), .groups = 'drop') %>%
+  arrange(desc(medal_count)) %>%
+  slice_head(n = 3)
+print(top_medallists)
+
+# ---------------------------------------------------------
+# 📈 Task 4: Visualizations
+# ---------------------------------------------------------
+
+# Distribution of Medals by Event Type
+event_distribution <- medals %>%
+  group_by(event_type, medal_type) %>%
+  summarize(count = n(), .groups = 'drop')
+
+ggplot(event_distribution, aes(x = reorder(event_type, count), y = count, fill = medal_type)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(title = "Distribution of Medals by Event Type",
+       x = "Event Type", y = "Number of Medals") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# ---------------------------------------------------------
+# 🇫🇷 Task 5: Total Gold Medals (Team Events - France)
+# ---------------------------------------------------------
+total_gold_team_france <- medals %>%
+  filter(country == "France", medal_type == "Gold Medal", grepl("TEAM", event_type)) %>%
+  summarise(total_gold = n())
+print(total_gold_team_france)
+
+# ---------------------------------------------------------
+# 👩 Task 6: Female Medallists by Country
+# ---------------------------------------------------------
+# Update gender abbreviation
+medals <- medals %>%
+  mutate(gender = ifelse(gender == 'W', 'F', gender))
+
+# Country with highest female medallists
+female_medallists <- medals %>%
+  filter(gender == 'F') %>%
+  group_by(country) %>%
+  summarise(num_medallists = n_distinct(name)) %>%
+  arrange(desc(num_medallists))
+print(female_medallists[1,])
+
+# ---------------------------------------------------------
+# 🏃 Task 7: Top Country in Athletics
+# ---------------------------------------------------------
+top_athletics_country <- medals %>%
+  filter(discipline == 'Athletics') %>%
+  group_by(country) %>%
+  summarise(total_medals = n()) %>%
+  arrange(desc(total_medals)) %>%
+  slice(1)
+print(top_athletics_country)
+
+# ---------------------------------------------------------
+# 🚻 Task 8: Medals by Gender and Country
+# ---------------------------------------------------------
+total_medals_by_gender <- medals %>%
+  group_by(country, gender) %>%
+  summarise(total_medals = n()) %>%
+  arrange(country, gender)
+
+# Bar chart of medals by country and gender
+ggplot(total_medals_by_gender, aes(x = country, y = total_medals, fill = gender)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Total Medals by Country and Gender",
+       x = "Country", y = "Total Medals") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# ---------------------------------------------------------
+# 🥇 Task 9: Top 10 Countries by Gold Medals
+# ---------------------------------------------------------
+gold_medals_per_country <- medals %>%
+  filter(medal_type == "Gold Medal") %>%
+  group_by(country) %>%
+  summarise(total_gold = n()) %>%
+  arrange(desc(total_gold)) %>%
+  slice_head(n = 10)
+
+ggplot(gold_medals_per_country, aes(x = reorder(country, total_gold), y = total_gold, fill = country)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Top 10 Countries by Gold Medals",
+       x = "Country", y = "Total Gold Medals") +
+  coord_flip() +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# ---------------------------------------------------------
+# ✨ End of Script
+# ---------------------------------------------------------
